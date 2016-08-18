@@ -37,7 +37,7 @@ class ImageDataLayer : public BasePrefetchingDataLayer<Dtype> {
   virtual void ShuffleImages();
   virtual void load_batch(Batch<Dtype>* batch);
 
-  vector<std::pair<std::string, int> > lines_;//path and lable
+  vector<std::pair<std::string, std::vector<int> > > lines_;//path and lable
   int lines_id_;//随机跳过的图片的个数
 };
 

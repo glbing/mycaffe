@@ -30,6 +30,8 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
   const int new_width  = this->layer_param_.image_data_param().new_width();
   const bool is_color  = this->layer_param_.image_data_param().is_color();
   string root_folder = this->layer_param_.image_data_param().root_folder();
+  //+ label_size
+  const int label_size = this->layer_param_.image_data_param().label_size();
 
   CHECK((new_height == 0 && new_width == 0) ||
       (new_height > 0 && new_width > 0)) << "Current implementation requires "
@@ -39,12 +41,16 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
   LOG(INFO) << "Opening file " << source;
   std::ifstream infile(source.c_str());//以输入方式打开文件
   string line;
-  size_t pos;
-  int label;
-  while (std::getline(infile, line)) {//按行读取路径和文件名
-    pos = line.find_last_of(' ');
-    label = atoi(line.substr(pos + 1).c_str());
-    lines_.push_back(std::make_pair(line.substr(0, pos), label));//将图片路径和标签存储到数据成std::pair
+  //size_t pos;
+  std::string filename;
+  std::vector<int> labels;
+  while (std::getline(infile, line)) {//stream infile的每行读入到 string line
+    std::istringstream str_list(line);//以空格将line分割
+    str_list>>filename;
+    int label;  
+    while(str_list>>label)
+      labels.push_back(label);//
+    lines.push_back(std::make_pair(filename,labels));//构造lines
   }
 
   CHECK(!lines_.empty()) << "File is empty";
@@ -87,7 +93,7 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
       << top[0]->channels() << "," << top[0]->height() << ","
       << top[0]->width();
   // 设置label的形状
-  vector<int> label_shape(1, batch_size);//容器含有1个值为batch_size的元素
+  vector<int> label_shape(batch_size,label_size);//容器含有1个值为batch_size的元素
   top[1]->Reshape(label_shape);
     // 设置预取数组中类标的形状  
   for (int i = 0; i < this->PREFETCH_COUNT; ++i) {
@@ -120,6 +126,9 @@ void ImageDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
   const int new_width = image_data_param.new_width();
   const bool is_color = image_data_param.is_color();
   string root_folder = image_data_param.root_folder();
+  //+ label_size
+  const int label_size = this->layer_param_.image_data_param().label_size();
+
 
   // Reshape according to the first image of each batch
   // on single input batches allows for inputs of varying dimension.
@@ -152,8 +161,10 @@ void ImageDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
     this->transformed_data_.set_cpu_data(prefetch_data + offset);
     this->data_transformer_->Transform(cv_img, &(this->transformed_data_));//进行预处理
     trans_time += timer.MicroSeconds();
-
-    prefetch_label[item_id] = lines_[lines_id_].second;
+    //
+    CHECK_EQ(label_size,lines_[lines_id_].second.size())<<"label_size not matching the proto setting";
+    for (int i=0;i<label_size;i++)
+      prefetch_label[item_id*label_size+i] = lines_[lines_id_].second[i];
     // go to the next iter
     lines_id_++;
     if (lines_id_ >= lines_size) {
