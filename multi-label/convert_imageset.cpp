@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
   const bool encoded = FLAGS_encoded;
   const string encode_type = FLAGS_encode_type;
 
-  std::ifstream infile(argv[2]);
+  std::ifstream infile(argv[2]);//打开train or test.txt文件
   std::vector<std::pair< std::string, std::vector<int> > lines;//int 变为vector<int>
   std::string line;
   size_t pos;
