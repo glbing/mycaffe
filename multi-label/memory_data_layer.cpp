@@ -68,7 +68,7 @@ void MemoryDataLayer<Dtype>::AddMatVector(const vector<cv::Mat>& mat_vector,
   CHECK_GT(num, 0) << "There is no mat to add";
   CHECK_EQ(num % batch_size_, 0) <<
       "The added data must be a multiple of the batch size.";
-  CHECK_EQ(label_size_,labels.sizez()/num) <<
+  CHECK_EQ(label_size_,labels.size()/num) <<
       "the label_size of input ot match the proto";
   added_data_.Reshape(num, channels_, height_, width_);
   added_label_.Reshape(num, label_size_, 1, 1);

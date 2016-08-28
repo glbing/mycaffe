@@ -130,7 +130,7 @@ bool ReadImageToDatum(const string& filename, const std::vector<int> label,
       datum->set_data(std::string(reinterpret_cast<char*>(&buf[0]),
                       buf.size()));
       //datum->set_label(label);
-      datum->mutli_label()->clear();
+      //datum->label()->clear();
       for (int i=0;i<label.size();i++)
         datum->add_label(label[i]); 
 
@@ -139,7 +139,7 @@ bool ReadImageToDatum(const string& filename, const std::vector<int> label,
     }
     CVMatToDatum(cv_img, datum);
     //datum->set_label(label);
-    datum->mutli_label()->clear();
+    //datum->label()->clear();
     for (int i=0;i<label.size();i++)
       datum->add_label(label[i]);
     
@@ -164,7 +164,7 @@ bool ReadFileToDatum(const string& filename, const std::vector<int> label,
     datum->set_data(buffer);
     //vector<int> label
     //datum->set_label(label);//需要修改caffe.proto里面的Datum:label 修改为 mutli-label
-    datum->mutli_label()->clear();
+    //datum->label()->clear();
     for (int i=0;i<label.size();i++)
       datum->add_label(label[i]);
 

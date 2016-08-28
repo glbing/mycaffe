@@ -50,7 +50,7 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
     int label;  
     while(str_list>>label)
       labels.push_back(label);//
-    lines.push_back(std::make_pair(filename,labels));//构造lines
+    lines_.push_back(std::make_pair(filename,labels));//构造lines
   }
 
   CHECK(!lines_.empty()) << "File is empty";

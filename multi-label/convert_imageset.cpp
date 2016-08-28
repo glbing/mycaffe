@@ -72,9 +72,9 @@ int main(int argc, char** argv) {
   const string encode_type = FLAGS_encode_type;
 
   std::ifstream infile(argv[2]);//打开train or test.txt文件
-  std::vector<std::pair< std::string, std::vector<int> > lines;//int 变为vector<int>
+  std::vector<std::pair< std::string, std::vector<int> > >lines;//int 变为vector<int>
   std::string line;
-  size_t pos;
+  //size_t pos;
   //文件路径 和 标签
   std::string filename;
   std::vector<int> labels;
