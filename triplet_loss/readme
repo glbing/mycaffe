@@ -1,0 +1,3 @@
+triplet_loss,2种形式：1bottom和多bottom
+经过测试可用
+训练的时候 容易陷入 loss局部最优....
