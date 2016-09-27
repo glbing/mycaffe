@@ -36,8 +36,9 @@ def read_images(list_,new_height,new_width):#图像路径列表
 		a_data=numpy.array(Image.open(a_list[i]).resize((new_height,new_width)))#.transpose((2,0,1))# c*h*w
 		p_data=numpy.array(Image.open(p_list[i]).resize((new_height,new_width)))#.transpose((2,0,1))# c*h*w 
 		n_data=numpy.array(Image.open(n_list[i]).resize((new_height,new_width)))#.transpose((2,0,1))# c*h*w 
-		if (len(a_data.shape)+len(p_data.shape)+len(n_data.shape)) == 3*3:
-			a_data=a_data.transpose((2,0,1))
+
+		if (len(a_data.shape)+len(p_data.shape)+len(n_data.shape)) == 3*3: #过滤掉不是三通道的图片，所以len(a_list)<triplet_count
+<			a_data=a_data.transpose((2,0,1))
 			p_data=p_data.transpose((2,0,1))
 			n_data=n_data.transpose((2,0,1))
 
@@ -130,6 +131,7 @@ def write_lmdb(images_path,new_height,new_width,shuffle,batch_size):
 	iter_conut=int(total_count)/int(batch_size)
 	last=int(total_count)%int(batch_size)
 
+	################################################################################
 	for i in range(iter_conut):
 		list_[i*batch_size:i*batch_size+batch_size]
 		a_list,p_list,n_list,images_array,images_label=read_images(list_[i*batch_size:i*batch_size+batch_size],new_height,new_width)
@@ -148,6 +150,7 @@ def write_lmdb(images_path,new_height,new_width,shuffle,batch_size):
 			lmdb_txn.put(keystr, datum.SerializeToString())#写入内存
 			lmdb_txn.commit()#写入硬盘
 
+	##############################################################################
 
 	#last iter
 	list_[iter_conut*batch_size:iter_conut*batch_size+last]
@@ -167,6 +170,7 @@ def write_lmdb(images_path,new_height,new_width,shuffle,batch_size):
 		lmdb_txn.put(keystr, datum.SerializeToString())#写入内存
 		lmdb_txn.commit()#写入硬盘
 
+	##############################################################################
 	
 	lmdb_env.close()
 
