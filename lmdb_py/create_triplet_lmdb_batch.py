@@ -27,18 +27,17 @@ def read_images(list_,new_height,new_width):#图像路径列表
 		labels_list.append(int(1))
 
 	triplet_count=len(a_list)
-	print triplet_count
+	#print triplet_count
 
 	images_array=[]
-	
+	filter_list=[]
 	for i in range(triplet_count):
-
 		a_data=numpy.array(Image.open(a_list[i]).resize((new_height,new_width)))#.transpose((2,0,1))# c*h*w
 		p_data=numpy.array(Image.open(p_list[i]).resize((new_height,new_width)))#.transpose((2,0,1))# c*h*w 
 		n_data=numpy.array(Image.open(n_list[i]).resize((new_height,new_width)))#.transpose((2,0,1))# c*h*w 
 
-		if (len(a_data.shape)+len(p_data.shape)+len(n_data.shape)) == 3*3: #过滤掉不是三通道的图片，所以len(a_list)<triplet_count
-<			a_data=a_data.transpose((2,0,1))
+		if (len(a_data.shape)+len(p_data.shape)+len(n_data.shape)) == 3*3:
+			a_data=a_data.transpose((2,0,1))
 			p_data=p_data.transpose((2,0,1))
 			n_data=n_data.transpose((2,0,1))
 
@@ -51,10 +50,19 @@ def read_images(list_,new_height,new_width):#图像路径列表
 			images_array.append(image_data)
 
 		else:
+			'''
 			del a_list[i]
 			del p_list[i]
 			del n_list[i]
 			del labels_list[i]
+			'''
+			filter_list.append(i)
+
+	for i in range(len(filter_list)):
+		del a_list[i]
+		del p_list[i]
+		del n_list[i]
+		del labels_list[i]
 		#print image_data.dtype
 	return a_list,p_list,n_list,images_array,numpy.array(labels_list)
 
@@ -101,26 +109,26 @@ def convert_imageset(lmdb_dir,a_list,p_list,n_list,images_array,images_label,bat
 	lmdb_env.close()
 
 #### the menmory is not enough,need split
-def write_lmdb(images_path,new_height,new_width,shuffle,batch_size):
+def write_lmdb(images_path,lmdb_dir, new_height, new_width, shuffle, batch_size):
 	##################
 	#
 	f=open(images_path)
 	if not f:
 		print "can not open %s" %images_path
 		return 
-	list_=f.readlines()
-
+	list_all=f.readlines()
+	print  "%d triplets totally" %(len(list_all))
 	##############################
 	#
 	if shuffle==True:
-		random.shuffle(list_)
+		random.shuffle(list_all)
 
 	##############################
 	#
-	total_count=len(list_)
-	triplet_count=total_count
+	total_count=len(list_all)
+	#triplet_count=total_count
 
-	images_size=numpy.zeros((3*3,new_width,new_width),dtype=numpy.uint8).nbytes*triplet_count
+	images_size=numpy.zeros((3*3,new_width,new_width),dtype=numpy.uint8).nbytes*total_count
 	map_size=images_size*10
 
 	lmdb_env=lmdb.open(lmdb_dir,map_size)
@@ -130,14 +138,15 @@ def write_lmdb(images_path,new_height,new_width,shuffle,batch_size):
 	#
 	iter_conut=int(total_count)/int(batch_size)
 	last=int(total_count)%int(batch_size)
+	#print iter_conut
 
-	################################################################################
 	for i in range(iter_conut):
-		list_[i*batch_size:i*batch_size+batch_size]
-		a_list,p_list,n_list,images_array,images_label=read_images(list_[i*batch_size:i*batch_size+batch_size],new_height,new_width)
+		tt=list_all[i*batch_size:i*batch_size+batch_size]
+		a_list,p_list,n_list,images_array,images_label=read_images(tt,new_height,new_width)
 		#convert_imageset("/home/glb/Consumer-to-shop Clothes Retrieval Benchmark/Eval/db_dir",a_list,p_list,n_list,images_array,images_label,100)
 
 		for j in range(len(a_list)):
+
 			lmdb_txn=lmdb_env.begin(write=True)
 			img=images_array[j]
 			data=img.astype(numpy.uint8)
@@ -149,15 +158,16 @@ def write_lmdb(images_path,new_height,new_width,shuffle,batch_size):
 			#keystr = int(i)
 			lmdb_txn.put(keystr, datum.SerializeToString())#写入内存
 			lmdb_txn.commit()#写入硬盘
+		print  "batch %d writen" %((i+1)*batch_size)
 
-	##############################################################################
 
 	#last iter
-	list_[iter_conut*batch_size:iter_conut*batch_size+last]
-	a_list,p_list,n_list,images_array,images_label=read_images(list_[i*batch_size:i*batch_size+batch_size],new_height,new_width)
+	tt=list_all[iter_conut*batch_size:iter_conut*batch_size+last]
+	a_list,p_list,n_list,images_array,images_label=read_images(tt,new_height,new_width)
 	#convert_imageset("/home/glb/Consumer-to-shop Clothes Retrieval Benchmark/Eval/db_dir",a_list,p_list,n_list,images_array,images_label,100)
 
 	for j in range(len(a_list)):
+
 		lmdb_txn=lmdb_env.begin(write=True)
 		img=images_array[j]
 		data=img.astype(numpy.uint8)
@@ -169,8 +179,8 @@ def write_lmdb(images_path,new_height,new_width,shuffle,batch_size):
 		#keystr = int(i)
 		lmdb_txn.put(keystr, datum.SerializeToString())#写入内存
 		lmdb_txn.commit()#写入硬盘
+	print  "batch %d writen" %(total_count)
 
-	##############################################################################
 	
 	lmdb_env.close()
 
@@ -178,9 +188,13 @@ def write_lmdb(images_path,new_height,new_width,shuffle,batch_size):
 
 if __name__ == "__main__":
 	os.chdir("/home/glb/Consumer-to-shop Clothes Retrieval Benchmark/Img")
-	a_list,p_list,n_list,images_array,images_label=read_images("/home/glb/Consumer-to-shop Clothes Retrieval Benchmark/Eval/triplet_train_list.txt",256,256,True)
-	convert_imageset("/home/glb/Consumer-to-shop Clothes Retrieval Benchmark/Eval/db_dir",a_list,p_list,n_list,images_array,images_label,100)
+	#a_list,p_list,n_list,images_array,images_label=read_images("/home/glb/Consumer-to-shop Clothes Retrieval Benchmark/Eval/triplet_train_list.txt",256,256,True)
+	#convert_imageset("/home/glb/Consumer-to-shop Clothes Retrieval Benchmark/Eval/db_dir",a_list,p_list,n_list,images_array,images_label,100)
 	#print images_array
 	#print images_array.nbytes
 	#print type(images_label[0])
+	#
+	write_lmdb("/home/glb/Consumer-to-shop Clothes Retrieval Benchmark/Eval/triplet_train_list.txt","db_dir",256,256,True,200)
+
+
 	
