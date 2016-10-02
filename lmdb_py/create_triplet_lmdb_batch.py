@@ -175,7 +175,7 @@ def write_lmdb(images_path,lmdb_dir, new_height, new_width, shuffle, batch_size)
 		datum=caffe.proto.caffe_pb2.Datum()
 		datum=caffe.io.array_to_datum(data, label)#
 
-		keystr = '{:0>8d}'.format(i)+'_'+a_list[j]+'_'+p_list[j]+'_'+n_list[j]
+		keystr = '{:0>8d}'.format(j)+'_'+a_list[j]+'_'+p_list[j]+'_'+n_list[j]
 		#keystr = int(i)
 		lmdb_txn.put(keystr, datum.SerializeToString())#写入内存
 		lmdb_txn.commit()#写入硬盘
