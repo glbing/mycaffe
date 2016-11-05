@@ -43,11 +43,11 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
   string line;
   //size_t pos;
   std::string filename;
-  std::vector<int> labels;
   while (std::getline(infile, line)) {//stream infile的每行读入到 string line
     std::istringstream str_list(line);//以空格将line分割
     str_list>>filename;
     int label;  
+    std::vector<int> labels;
     while(str_list>>label)
       labels.push_back(label);//
     lines_.push_back(std::make_pair(filename,labels));//构造lines
@@ -93,7 +93,8 @@ void ImageDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
       << top[0]->channels() << "," << top[0]->height() << ","
       << top[0]->width();
   // 设置label的形状
-  vector<int> label_shape(batch_size,label_size);//容器含有1个值为batch_size的元素
+  vector<int> label_shape(2,batch_size);//容器含有1个值为batch_size的元素
+  label_shape[1]=label_size;
   top[1]->Reshape(label_shape);
     // 设置预取数组中类标的形状  
   for (int i = 0; i < this->PREFETCH_COUNT; ++i) {

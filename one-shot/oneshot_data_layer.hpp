@@ -28,7 +28,7 @@ class OneshotDataLayer : public BasePrefetchingDataLayer<Dtype> {
   virtual void DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
 
-  virtual inline const char* type() const { return "ImageData"; }
+  virtual inline const char* type() const { return "OneshotData"; }
   virtual inline int ExactNumBottomBlobs() const { return 0; }
   virtual inline int ExactNumTopBlobs() const { return 2; }
 
@@ -37,6 +37,7 @@ class OneshotDataLayer : public BasePrefetchingDataLayer<Dtype> {
   virtual void ShuffleImages();
   virtual void load_batch(Batch<Dtype>* batch);
 
+  vector< vector<std::pair<std::string, int> > > sets_;
   vector<std::pair<std::string, int> > lines_;
   int lines_id_;
 };

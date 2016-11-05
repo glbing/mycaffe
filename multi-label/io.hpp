@@ -93,8 +93,8 @@ inline void WriteProtoToBinaryFile(
 bool ReadFileToDatum(const string& filename, const std::vector<int> label, Datum* datum);
 
 inline bool ReadFileToDatum(const string& filename, Datum* datum) {
-  std::std::vector<int> vv;
-  vv.push_back(-1);
+    std::vector<int> vv;
+    vv.push_back(-1);
   return ReadFileToDatum(filename, vv, datum);
 }
 

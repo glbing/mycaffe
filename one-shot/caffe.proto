@@ -1406,8 +1406,8 @@ message PReLUParameter {
 message OneshotDataParameter {  
      
   //N-way K-shot
-  optional unit32 n_way=1 [default = 0] 
-  optional unit32 k_shot=2 [default = 0]
+  optional uint32 n_way = 13 [default = 0]; 
+  optional uint32 k_shot = 14 [default = 0];
 
   // Specify the data source file path.
   optional string source = 1;

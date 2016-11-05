@@ -25,17 +25,23 @@ OneshotDataLayer<Dtype>::~OneshotDataLayer<Dtype>() {
 template <typename Dtype>
 void OneshotDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
-  
-  const int new_height = this->layer_param_.image_data_param().new_height();
-  const int new_width  = this->layer_param_.image_data_param().new_width();
-  const bool is_color  = this->layer_param_.image_data_param().is_color();
-  string root_folder = this->layer_param_.image_data_param().root_folder();
+  const int n_way = this->layer_param_.oneshot_data_param().n_way();
+  const int k_shot = this->layer_param_.oneshot_data_param().k_shot();
+  const int batch_size = this->layer_param_.oneshot_data_param().batch_size();
+
+  CHECK_EQ(n_way*k_shot*2, batch_size)<<"the size of (set_b + set_b) must be equal to batch_size";
+
+  const int new_height = this->layer_param_.oneshot_data_param().new_height();
+  const int new_width  = this->layer_param_.oneshot_data_param().new_width();
+  const bool is_color  = this->layer_param_.oneshot_data_param().is_color();
+  string root_folder = this->layer_param_.oneshot_data_param().root_folder();
 
   CHECK((new_height == 0 && new_width == 0) ||
       (new_height > 0 && new_width > 0)) << "Current implementation requires "
       "new_height and new_width to be set at the same time.";
+
   // Read the file with filenames and labels
-  const string& source = this->layer_param_.image_data_param().source();
+  const string& source = this->layer_param_.oneshot_data_param().source();
   LOG(INFO) << "Opening file " << source;
   std::ifstream infile(source.c_str());
   string line;
@@ -43,26 +49,49 @@ void OneshotDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
   int label;
   while (std::getline(infile, line)) {
     pos = line.find_last_of(' ');
-    label = atoi(line.substr(pos + 1).c_str());
+    label = atoi(line.substr(pos + 1).c_str()); //将字符串转换为整数
     lines_.push_back(std::make_pair(line.substr(0, pos), label));
   }
 
   CHECK(!lines_.empty()) << "File is empty";
+  CHECK_EQ(lines_.size()%batch_size, 0)<<"the size of samples must be divisible by batch_size";
+  //lines_  的元素为 txt的每一行的 path + label
+  //由lines_生成 sets_
+  
+  //std::vector<std::string, int> temp;
+  vector< std::pair<std::string, int> >::iterator iter_1;
+  vector< std::pair<std::string, int> >::iterator iter_2;
+  for(int i=0; i< lines_.size()/batch_size; ++i)
+  {
+    iter_1=lines_.begin()+i*batch_size;
+    iter_2=lines_.begin()+(i+1)*batch_size;
+    std::vector<std::pair<std::string, int> > temp(iter_1,iter_2);
+    sets_.push_back(temp);
+  }
 
-  if (this->layer_param_.image_data_param().shuffle()) {
+  if (this->layer_param_.oneshot_data_param().shuffle()) {
     // randomly shuffle data
     LOG(INFO) << "Shuffling data";
     const unsigned int prefetch_rng_seed = caffe_rng_rand();
     prefetch_rng_.reset(new Caffe::RNG(prefetch_rng_seed));
     ShuffleImages();
   }
-  LOG(INFO) << "A total of " << lines_.size() << " images.";
 
+  LOG(INFO) << "A total of " << sets_.size()*batch_size << " images.";
+
+  //从sets_恢复lines_
+  for(int i=0;i<sets_.size();++i)
+  {
+    for(int j=0;j<batch_size;++j)
+    {
+      lines_[i*batch_size+j] = sets_[i][j];
+    }
+  }
   lines_id_ = 0;
   // Check if we would need to randomly skip a few data points
-  if (this->layer_param_.image_data_param().rand_skip()) {
+  if (this->layer_param_.oneshot_data_param().rand_skip()) {
     unsigned int skip = caffe_rng_rand() %
-        this->layer_param_.image_data_param().rand_skip();
+        this->layer_param_.oneshot_data_param().rand_skip();
     LOG(INFO) << "Skipping first " << skip << " data points.";
     CHECK_GT(lines_.size(), skip) << "Not enough points to skip";
     lines_id_ = skip;
@@ -74,8 +103,8 @@ void OneshotDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
   // Use data_transformer to infer the expected blob shape from a cv_image.
   vector<int> top_shape = this->data_transformer_->InferBlobShape(cv_img);
   this->transformed_data_.Reshape(top_shape);
+
   // Reshape prefetch_data and top[0] according to the batch_size.
-  const int batch_size = this->layer_param_.image_data_param().batch_size();
   CHECK_GT(batch_size, 0) << "Positive batch size required";
   top_shape[0] = batch_size;
   for (int i = 0; i < this->PREFETCH_COUNT; ++i) {
@@ -98,7 +127,7 @@ template <typename Dtype>
 void OneshotDataLayer<Dtype>::ShuffleImages() {
   caffe::rng_t* prefetch_rng =
       static_cast<caffe::rng_t*>(prefetch_rng_->generator());
-  shuffle(lines_.begin(), lines_.end(), prefetch_rng);
+  shuffle(sets_.begin(), sets_.end(), prefetch_rng);
 }
 
 // This function is called on prefetch thread
@@ -111,12 +140,12 @@ void OneshotDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
   CPUTimer timer;
   CHECK(batch->data_.count());
   CHECK(this->transformed_data_.count());
-  ImageDataParameter image_data_param = this->layer_param_.image_data_param();
-  const int batch_size = image_data_param.batch_size();
-  const int new_height = image_data_param.new_height();
-  const int new_width = image_data_param.new_width();
-  const bool is_color = image_data_param.is_color();
-  string root_folder = image_data_param.root_folder();
+  OneshotDataParameter oneshot_data_param = this->layer_param_.oneshot_data_param();
+  const int batch_size = oneshot_data_param.batch_size();
+  const int new_height = oneshot_data_param.new_height();
+  const int new_width = oneshot_data_param.new_width();
+  const bool is_color = oneshot_data_param.is_color();
+  string root_folder = oneshot_data_param.root_folder();
 
   // Reshape according to the first image of each batch
   // on single input batches allows for inputs of varying dimension.
@@ -157,7 +186,7 @@ void OneshotDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
       // We have reached the end. Restart from the first.
       DLOG(INFO) << "Restarting data prefetching from start.";
       lines_id_ = 0;
-      if (this->layer_param_.image_data_param().shuffle()) {
+      if (this->layer_param_.oneshot_data_param().shuffle()) {
         ShuffleImages();
       }
     }
